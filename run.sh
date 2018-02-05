@@ -5,6 +5,7 @@ hosts=/run/openshift/label.tmp.hosts
 inventory_file_path=$2
 label_prefix="role"
 pbench_label="type=pbench"
+inv_path=$3
 declare -a host
 declare -a group
 declare -a label
@@ -27,6 +28,41 @@ if [[ $? != 0 ]]; then
 else
 	echo "oc client already present"
 fi
+
+if [[ -z $inv_path ]]; then
+	inv_path="/root/inventory"
+	echo "inventory path is not provided by the user, the inventory will be generated in the default location /root/inventory"
+fi
+
+function generate_inventory() {
+	# pbench-controller
+	echo "[pbench-controller]" > $inv_path
+	echo $(hostname) >> $inv_path
+
+	# masters
+	echo "[masters]" >> $inv_path
+	for nodes in $(oc get nodes -l role=master -o json | jq '.items[].metadata.name'); do
+        	echo $nodes |  sed "s/\"//g" >> $inv_path
+	done
+
+	# nodes
+	echo "[nodes]" >> $inv_path
+	for nodes in $(oc get nodes -l role=node -o json | jq '.items[].metadata.name'); do
+        	echo $nodes |  sed "s/\"//g" >> $inv_path
+	done
+
+	# etcd
+	echo "[etcd]" >> $inv_path
+	for nodes in $(oc get nodes -l role=etcd -o json | jq '.items[].metadata.name'); do
+        	echo $nodes |  sed "s/\"//g" >> $inv_path
+	done
+
+	# lb
+	echo "[lb]" >> $inv_path
+	for nodes in $(oc get nodes -l role=lb -o json | jq '.items[].metadata.name'); do
+        	echo $nodes |  sed "s/\"//g" >> $inv_path
+	done
+}
 
 while read -u 9 line;do
   hostname=$(echo $line | awk -F' ' '{print $1}')
@@ -69,4 +105,6 @@ fi
 if [ $? -ne 0 ]; then
   warn_log "cannot delete hosts file" 
 fi
+# generate inventory
+generate_inventory
 exit 0
