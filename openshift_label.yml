@@ -4,6 +4,7 @@
   vars:
     - file: /run/openshift/register.hosts
     - inventory_file_path: /root/inventory
+    - tooling_inv: /root/tooling_inventory
   tasks:
     - name: create .kube directory to store config file
       file: path={{ ansible_env.HOME }}/.kube state=directory
@@ -22,7 +23,7 @@
     - name: copy, set permissions on the register script
       copy:
         src: label.sh
-        dest: /run/openshift/label.sh
+        dest: /run/openshift/run.sh
         owner: root
         group: root
         mode: 0755

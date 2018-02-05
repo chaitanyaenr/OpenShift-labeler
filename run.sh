@@ -30,7 +30,7 @@ else
 fi
 
 if [[ -z $inv_path ]]; then
-	inv_path="/root/inventory"
+	inv_path="/root/tooling_inventory"
 	echo "inventory path is not provided by the user, the inventory will be generated in the default location /root/inventory"
 fi
 
