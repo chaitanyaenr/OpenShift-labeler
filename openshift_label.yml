@@ -3,7 +3,6 @@
   user: root
   vars:
     - file: /run/openshift/register.hosts
-    - inventory_file_path: /root/inventory
     - tooling_inv: /root/tooling_inventory
     - register_all_nodes : False
   tasks:
@@ -71,4 +70,4 @@
       when: groups['lb']|default([])
 
     - name: label nodes
-      shell: sh /run/openshift/generate.sh {{ file }} {{ inventory_file_path }} {{ tooling_inv }} {{ register_all_nodes }}
+      shell: sh /run/openshift/generate.sh {{ file }} {{ inventory_file }} {{ tooling_inv }} {{ register_all_nodes }}
