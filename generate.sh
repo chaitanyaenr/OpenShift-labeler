@@ -6,6 +6,7 @@ inventory_file_path=$2
 label_prefix="role"
 pbench_label="type=pbench"
 inv_path=$3
+register_all_nodes=$4
 declare -a host
 declare -a group
 declare -a label
@@ -31,37 +32,40 @@ fi
 
 if [[ -z $inv_path ]]; then
 	inv_path="/root/tooling_inventory"
-	echo "inventory path is not provided by the user, the inventory will be generated in the default location /root/inventory"
+	echo "inventory path is not provided by the user, the inventory will be generated in the default location $inv_path"
+fi
+# delete tooling inventory if already exists
+if [[ -f $inv_path ]]; then
+        /bin/rm $inv_path
 fi
 
+function cleanup() {
+	/bin/rm $file
+	/bin/rm $hosts
+}
+
+# generate inventory by looking at node labels
 function generate_inventory() {
-	# pbench-controller
-	echo "[pbench-controller]" > $inv_path
-	echo $(hostname) >> $inv_path
-
-	# masters
-	echo "[masters]" >> $inv_path
-	for nodes in $(oc get nodes -l role=master -o json | jq '.items[].metadata.name'); do
-        	echo $nodes |  sed "s/\"//g" >> $inv_path
-	done
-
-	# nodes
-	echo "[nodes]" >> $inv_path
-	for nodes in $(oc get nodes -l role=node -o json | jq '.items[].metadata.name'); do
-        	echo $nodes |  sed "s/\"//g" >> $inv_path
-	done
-
-	# etcd
-	echo "[etcd]" >> $inv_path
-	for nodes in $(oc get nodes -l role=etcd -o json | jq '.items[].metadata.name'); do
-        	echo $nodes |  sed "s/\"//g" >> $inv_path
-	done
-
-	# lb
-	echo "[lb]" >> $inv_path
-	for nodes in $(oc get nodes -l role=lb -o json | jq '.items[].metadata.name'); do
-        	echo $nodes |  sed "s/\"//g" >> $inv_path
-	done
+	group=$1
+	node_label=$2
+	second_label=$3
+	echo "[$group]" >> $inv_path
+	if [[ $group  == "pbench-controller" ]]; then
+        	echo $(hostname) >> $inv_path
+		echo -e "\n" >> $inv_path
+	elif [[ $group == "pbench-controller:vars" ]]; then
+		echo "register_all_nodes=$register_all_nodes" >> $inv_path		 
+	else
+        	for nodes in $(oc get nodes -l role=$node_label -o json | jq '.items[].metadata.name'); do
+                	echo $nodes |  sed "s/\"//g" >> $inv_path
+        	done
+		if [[ ! -z $second_label ]]; then
+			for nodes in $(oc get nodes -l role=$second_label -o json | jq '.items[].metadata.name'); do
+                                echo $nodes |  sed "s/\"//g" >> $inv_path
+                        done
+		fi
+		echo -e "\n" >> $inv_path
+	fi
 }
 
 while read -u 9 line;do
@@ -96,15 +100,33 @@ while read -u 11 line;do
   # label the node on which we want to run pbench pods
   oc label node $host $pbench_label
 done 11< $hosts
-## delete host files
-/bin/rm $file
-if [ $? -ne 0 ]; then
-  warn_log "cannot delete input file" 
-fi
-/bin/rm $hosts
-if [ $? -ne 0 ]; then
-  warn_log "cannot delete hosts file" 
-fi
+
 # generate inventory
-generate_inventory
-exit 0
+# pbench-controller
+generate_inventory pbench-controller
+
+# master ( considers the case where master and etcd are co-located)
+generate_inventory masters master master_etcd
+
+# nodes
+generate_inventory nodes node
+
+# etcd (considers the case where master and etcd are co-lacated)
+generate_inventory etcd etcd master_etcd
+
+# lb 
+generate_inventory lb lb
+
+# cns
+generate_inventory glusterfs cns
+
+# prometheus-metrics
+echo "[prometheus-metrics]" >> $inv_path
+ansible-playbook -i $inv_path /root/openshift-labeler/prometheus_metrics.yml 
+echo -e "\n" >> $inv_path
+
+# vars
+generate_inventory pbench-controller:vars
+
+# cleanup
+cleanup
