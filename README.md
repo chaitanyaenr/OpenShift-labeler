@@ -14,12 +14,12 @@ $ ansible-playbook -vv -i <openshift-inventory> openshift_label.yml
 ### Labeling of openshift nodes
 The nodes in the openshift cluster are labeled as follows:
 
-- Master and etcd are co-located - role=master_etcd
-- Master                         - role=master
-- Nodes                          - role=node
-- Etcd                           - role=etcd
-- lb                             - role=lb
-- glusterfs                      - role=cns
+- Master and etcd are co-located - role=master_etcd, type=pbench
+- Master                         - role=master, type=pbench
+- Nodes                          - role=node, type=pbench
+- Etcd                           - role=etcd, type=pbench
+- lb                             - role=lb, type=pbench
+- glusterfs                      - role=cns, type=pbench
 
 ### Sample Inventory generated
 ```
@@ -43,10 +43,10 @@ foo.lb.com
 foo.cns.com
 
 [prometheus-metrics]
-host=foo.master.com port=8443 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
-host=foo.master.com port=10250 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
-host=foo.node.com port=10250 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
-host=foo.node.com port=10250 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
+foo.master.com port=8443 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
+foo.master.com port=10250 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
+foo.node.com port=10250 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
+foo.node.com port=10250 cert=/etc/origin/master/admin.crt key=/etc/origin/master/admin.key
 
 [pbench-controller:vars]
 register_all_nodes=False
